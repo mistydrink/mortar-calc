@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M320A1 Indirect Fire Calculator</title>
+<meta name="description" content="Turn the M320A1 grenade launcher into a makeshift mortar: grid-to-grid distance, bearing and launch elevation.">
+<style>
+  :root{
+    --bg:#0f1210; --panel:#171c18; --line:#2a332c; --text:#e6ebe4; --muted:#93a091;
+    --accent:#7ddc5a; --accent2:#5ad1dc; --warn:#f0b43c; --bad:#ef5b4f;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{border-bottom:1px solid var(--line);padding:22px 20px 18px}
+  header .wrap{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  h1{margin:0;font-size:22px;letter-spacing:.5px}
+  h1 span{color:var(--accent)}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .wrap{max-width:1080px;margin:0 auto}
+  main{padding:20px}
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:18px}
+  @media (max-width:860px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .card h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-weight:600}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+  input{width:100%;background:#0b0e0c;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:9px 10px;font:16px var(--mono)}
+  input:focus{outline:none;border-color:var(--accent)}
+  .who{font-family:var(--mono);font-size:12px;margin:0 0 6px;color:var(--accent)}
+  .who.t{color:var(--bad)}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  button{background:#1f2721;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:8px 12px;font:13px system-ui;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  .hint{font-size:12px;color:var(--muted);margin-top:10px}
+  .results{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+  @media (max-width:600px){.results{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:#0b0e0c;border:1px solid var(--line);border-radius:8px;padding:12px}
+  .stat .k{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+  .stat .v{font:600 26px var(--mono);margin-top:2px}
+  .stat .s{font-size:12px;color:var(--muted);font-family:var(--mono)}
+  .stat.primary{border-color:var(--accent)}
+  .stat.primary .v{color:var(--accent)}
+  .msg{font-size:13px;padding:8px 10px;border-radius:6px;margin-bottom:12px;display:none}
+  .msg.warn{display:block;background:rgba(240,180,60,.1);border:1px solid rgba(240,180,60,.4);color:var(--warn)}
+  .msg.bad{display:block;background:rgba(239,91,79,.1);border:1px solid rgba(239,91,79,.4);color:var(--bad)}
+  canvas{width:100%;height:340px;display:block}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px}
+  th,td{text-align:right;padding:5px 8px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:500}
+  tr.hit td{color:var(--accent)}
+  .section{margin-top:18px}
+  ol{padding-left:20px;margin:0}
+  ol li{margin-bottom:8px}
+  code{font-family:var(--mono);background:#0b0e0c;border:1px solid var(--line);padding:1px 5px;border-radius:4px;font-size:13px}
+  .shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px}
+  .shots figure{margin:0}
+  .shots img{width:100%;border-radius:6px;border:1px solid var(--line)}
+  .shots figcaption{font-size:12px;color:var(--muted);margin-top:4px}
+  footer{color:var(--muted);font-size:12px;text-align:center;padding:24px 20px 40px}
+  a{color:var(--accent2)}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>M320A1 <span>Indirect Fire</span> Calculator</h1>
+    <div class="tag">grid → distance · bearing · elevation &nbsp;|&nbsp; max range ≈ 580 m @ 45°</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="grid">
+    <!-- INPUT -->
+    <div>
+      <div class="card">
+        <h2>Coordinates</h2>
+        <p class="who">● YOU (launcher)</p>
+        <div class="pair">
+          <div><label for="x1">Easting X₁</label><input id="x1" inputmode="numeric" value="0288"></div>
+          <div><label for="y1">Northing Y₁</label><input id="y1" inputmode="numeric" value="0266"></div>
+        </div>
+        <p class="who t">✚ TARGET</p>
+        <div class="pair">
+          <div><label for="x2">Easting X₂</label><input id="x2" inputmode="numeric" value="0262"></div>
+          <div><label for="y2">Northing Y₂</label><input id="y2" inputmode="numeric" value="0243"></div>
+        </div>
+        <div class="row">
+          <button id="swap">⇅ Swap</button>
+          <button id="copy">Copy firing data</button>
+        </div>
+        <p class="hint">Digits set the precision: 3 digits = 100 m, <b>4 digits = 10 m</b>, 5 digits = 1 m (the map marker's <code>02619 02428</code> format). Use the same precision for both points.</p>
+      </div>
+
+      <div class="card section">
+        <h2>Range table</h2>
+        <table id="tbl"><thead><tr><th>Elevation</th><th>Range</th></tr></thead><tbody></tbody></table>
+        <p class="hint">Measured in-game, flat ground, sight zeroed at 50 m. Values between points are interpolated.</p>
+      </div>
+    </div>
+
+    <!-- OUTPUT -->
+    <div>
+      <div class="card">
+        <h2>Firing solution</h2>
+        <div id="msg" class="msg"></div>
+        <div class="results">
+          <div class="stat"><div class="k">Distance</div><div class="v" id="oD">—</div><div class="s">metres</div></div>
+          <div class="stat"><div class="k">Bearing</div><div class="v" id="oB">—</div><div class="s" id="oC">compass</div></div>
+          <div class="stat primary"><div class="k">High angle</div><div class="v" id="oH">—</div><div class="s">recommended (mortar)</div></div>
+          <div class="stat"><div class="k">Low angle</div><div class="v" id="oL">—</div><div class="s">flatter, direct-ish</div></div>
+        </div>
+        <canvas id="chart"></canvas>
+        <p class="hint">Pink: range curve. Teal: your target distance. Where they cross are your two elevations.</p>
+      </div>
+
+      <div class="card section">
+        <h2>How to use it</h2>
+        <ol>
+          <li>Open the map (enable <b>navigation aid</b>) and read your grid and the target grid. 4-digit per axis is plenty.</li>
+          <li>Enter both points above. You get <b>distance</b>, <b>bearing</b> and two possible <b>elevations</b>.</li>
+          <li>Turn to the bearing with your compass (<code>K</code>). The map line from you to your marker shows the same bearing.</li>
+          <li>Look through the <b>Cobra rangefinder</b>. It shows your vertical angle; tilt up until it reads the elevation.</li>
+          <li>Fire with the launcher held at that same angle. Spot the impact with RGE or a drone and adjust.</li>
+        </ol>
+        <p class="hint">The high angle (above 45°) arcs like a real mortar and clears cover. The low angle is quicker in the air but needs a clear line.</p>
+        <div class="shots">
+          <figure><img src="assets/map-example.png" alt="Map with player, marker and bearing"><figcaption>Map: you → marker, 229°</figcaption></figure>
+          <figure><img src="assets/cobra-rangefinder.png" alt="Cobra rangefinder showing 228 SW and 70 degrees"><figcaption>Cobra: bearing 228° SW, elevation 70°</figcaption></figure>
+          <figure><img src="assets/desmos-graph.png" alt="Original Desmos graph"><figcaption>Original Desmos range curve</figcaption></figure>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Ground is assumed flat: height differences are not accounted for yet. ·
+  Original method and <a href="https://www.desmos.com/calculator/yixjogvpyl" target="_blank" rel="noopener">Desmos calculator</a>.
+</footer>
+
+<script>
+// ---- Measured range table: [elevation°, range m] (from the Desmos data points) ----
+const TABLE = [
+  [0,50],[10,217],[20,397],[25,463],[30,512],[35,555],[40,577],[45,581],
+  [50,567],[55,540],[60,490],[65,428],[70,352],[75,270],[79,188]
+];
+const PEAK_I = TABLE.reduce((b,p,i)=>p[1]>TABLE[b][1]?i:b,0);
+const MAX_RANGE = TABLE[PEAK_I][1];
+const MIN_RANGE = TABLE[0][1];
+
+const $ = id => document.getElementById(id);
+
+function parseCoord(s){
+  s = String(s).trim();
+  if(!/^\d{3,5}$/.test(s)) return null;
+  const scale = {3:100, 4:10, 5:1}[s.length];
+  return { m: parseInt(s,10)*scale, digits: s.length };
+}
+
+// Solve range(angle) = d on one branch by linear interpolation
+function solveBranch(d, pts){
+  for(let i=0;i<pts.length-1;i++){
+    const [a1,r1]=pts[i],[a2,r2]=pts[i+1];
+    if((d-r1)*(d-r2)<=0 && r1!==r2) return a1+(d-r1)*(a2-a1)/(r2-r1);
+  }
+  return null;
+}
+const lowBranch  = TABLE.slice(0,PEAK_I+1);
+const highBranch = TABLE.slice(PEAK_I);
+
+function cardinal(b){
+  return ["N","NE","E","SE","S","SW","W","NW"][Math.round(b/45)%8];
+}
+
+let state = {};
+
+function compute(){
+  const p = ["x1","y1","x2","y2"].map(k=>parseCoord($(k).value));
+  const msg = $("msg"); msg.className="msg"; msg.textContent="";
+  ["x1","y1","x2","y2"].forEach((k,i)=>$(k).style.borderColor = p[i]?"":"var(--bad)");
+  if(p.some(v=>!v)){ show("bad","Enter 3–5 digit coordinates for every field."); clear(); return; }
+  if(new Set(p.map(v=>v.digits)).size>1) show("warn","Mixed precision: all four coordinates should use the same number of digits.");
+
+  const dx = p[2].m - p[0].m, dy = p[3].m - p[1].m;
+  const D = Math.hypot(dx,dy);
+  const B = ((Math.atan2(dx,dy)*180/Math.PI)+360)%360;
+
+  let lo=null, hi=null;
+  if(D>MAX_RANGE) show("bad",`Out of range: ${D.toFixed(0)} m is beyond the ~${MAX_RANGE} m maximum. Move closer.`);
+  else if(D<MIN_RANGE) show("warn",`Too close: under ${MIN_RANGE} m the table has no data (and you're inside your own blast radius).`);
+  if(D<=MAX_RANGE && D>=MIN_RANGE){
+    lo = solveBranch(D, lowBranch);
+    hi = solveBranch(D, highBranch);
+    if(hi===null && D<TABLE[TABLE.length-1][1]) show("warn",`Below ${TABLE[TABLE.length-1][1]} m the high-angle table runs out (measured up to 79°). Use the low angle or extend the table.`);
+  }
+
+  $("oD").textContent = D.toFixed(0);
+  $("oB").textContent = B.toFixed(1)+"°";
+  $("oC").textContent = cardinal(B);
+  $("oH").textContent = hi!==null ? hi.toFixed(1)+"°" : "—";
+  $("oL").textContent = lo!==null ? lo.toFixed(1)+"°" : "—";
+  state = {D,B,lo,hi};
+  draw();
+  try{ localStorage.setItem("m320", JSON.stringify(["x1","y1","x2","y2"].map(k=>$(k).value))); }catch(e){}
+}
+function show(cls,text){ const m=$("msg"); if(m.className.includes("bad")) return; m.className="msg "+cls; m.textContent=text; }
+function clear(){ ["oD","oB","oH","oL"].forEach(k=>$(k).textContent="—"); $("oC").textContent="compass"; state={}; draw(); }
+
+// ---- Chart ----
+function draw(){
+  const c=$("chart"), dpr=window.devicePixelRatio||1;
+  const W=c.clientWidth, H=c.clientHeight;
+  c.width=W*dpr; c.height=H*dpr;
+  const g=c.getContext("2d"); g.scale(dpr,dpr); g.clearRect(0,0,W,H);
+  const L=44,R=12,T=12,Bm=30, pw=W-L-R, ph=H-T-Bm;
+  const X=a=>L+a/90*pw, Y=r=>T+ph-(r/650)*ph;
+
+  g.font="11px ui-monospace,monospace"; g.fillStyle="#93a091"; g.strokeStyle="#2a332c"; g.lineWidth=1;
+  for(let r=0;r<=650;r+=50){ g.beginPath(); g.moveTo(L,Y(r)); g.lineTo(W-R,Y(r)); g.stroke(); if(r%100===0) g.fillText(r,6,Y(r)+4); }
+  for(let a=0;a<=90;a+=10){ g.beginPath(); g.moveTo(X(a),T); g.lineTo(X(a),T+ph); g.stroke(); g.fillText(a+"°",X(a)-8,H-10); }
+
+  g.strokeStyle="#d77bd6"; g.lineWidth=2; g.beginPath();
+  TABLE.forEach(([a,r],i)=> i?g.lineTo(X(a),Y(r)):g.moveTo(X(a),Y(r))); g.stroke();
+  g.fillStyle="#fff"; TABLE.forEach(([a,r])=>{ g.fillRect(X(a)-2,Y(r)-2,4,4); });
+
+  if(state.D!==undefined){
+    g.strokeStyle="#5ad1dc"; g.lineWidth=1.5; g.beginPath(); g.moveTo(L,Y(Math.min(state.D,650))); g.lineTo(W-R,Y(Math.min(state.D,650))); g.stroke();
+    [[state.lo,"#e6ebe4"],[state.hi,"#7ddc5a"]].forEach(([a,col])=>{
+      if(a===null||a===undefined) return;
+      g.fillStyle=col; g.beginPath(); g.arc(X(a),Y(state.D),5,0,7); g.fill();
+      g.fillText(`(${a.toFixed(0)}°, ${state.D.toFixed(0)}m)`, X(a)+8, Y(state.D)-8);
+    });
+  }
+  // highlight table rows
+  document.querySelectorAll("#tbl tbody tr").forEach(tr=>{
+    const a=+tr.dataset.a; tr.className = state.hi!=null && Math.abs(a-state.hi)<5 || state.lo!=null && Math.abs(a-state.lo)<5 ? "hit":"";
+  });
+}
+
+// ---- Init ----
+$("tbl").querySelector("tbody").innerHTML = TABLE.map(([a,r])=>`<tr data-a="${a}"><td>${a}°</td><td>${r} m</td></tr>`).join("");
+try{ const s=JSON.parse(localStorage.getItem("m320")); if(Array.isArray(s)&&s.length===4) ["x1","y1","x2","y2"].forEach((k,i)=>$(k).value=s[i]); }catch(e){}
+["x1","y1","x2","y2"].forEach(k=>$(k).addEventListener("input",compute));
+$("swap").onclick=()=>{ const a=[$("x1").value,$("y1").value]; $("x1").value=$("x2").value; $("y1").value=$("y2").value; $("x2").value=a[0]; $("y2").value=a[1]; compute(); };
+$("copy").onclick=()=>{
+  if(state.D===undefined) return;
+  const t=`M320A1 | ${state.D.toFixed(0)} m | ${state.B.toFixed(0)}° ${cardinal(state.B)} | high ${state.hi!=null?state.hi.toFixed(1)+"°":"n/a"} | low ${state.lo!=null?state.lo.toFixed(1)+"°":"n/a"}`;
+  navigator.clipboard?.writeText(t).then(()=>{ $("copy").textContent="Copied ✓"; setTimeout(()=>$("copy").textContent="Copy firing data",1200); }).catch(()=>{});
+};
+window.addEventListener("resize",draw);
+compute();
+</script>
+</body>
+</html>
